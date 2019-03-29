@@ -49,6 +49,7 @@ class ExperimentOTB(object):
                 self.result_dir, tracker.name, '%s.txt' % seq_name)
             if os.path.exists(record_file):
                 print('  Found results, skipping', seq_name)
+                raise RuntimeError('Existing results file')
                 continue
 
             # tracking loop

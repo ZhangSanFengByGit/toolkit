@@ -4,9 +4,10 @@ import fire
 from PIL import Image
 
 from got10k.trackers import Tracker, IdentityTracker
-from got10k.experiments import ExperimentGOT10k
+from got10k.experiments import ExperimentGOT10k, ExperimentOTB
 from got10k.datasets import GOT10k
 from got10k.utils.viz import show_frame
+from got10k.trackers.DeepKCF.kcf.kcftracker import KCFTracker
 
 
 ROOT_DIR = 'data/GOT-10k'
@@ -14,12 +15,11 @@ ROOT_DIR = 'data/GOT-10k'
 
 def example_track_val_set():
     # setup tracker
-    tracker = IdentityTracker()
+    tracker = KCFTracker()
 
     # run experiment on validation set
-    experiment = ExperimentGOT10k(
+    experiment = ExperimentOTB(
         root_dir=ROOT_DIR,
-        subset='val',
         result_dir='results',
         report_dir='reports')
     experiment.run(tracker, visualize=False)
