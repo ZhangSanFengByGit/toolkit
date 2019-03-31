@@ -2,12 +2,14 @@ from __future__ import absolute_import, print_function
 
 import fire
 from PIL import Image
+import os
 
+os.path.add('..')
 #rom ..got10k.trackers import Tracker, IdentityTracker
-from ..got10k.experiments import ExperimentGOT10k, ExperimentOTB
-from ..got10k.datasets import GOT10k
-from ..got10k.utils.viz import show_frame
-from ..got10k.trackers.DeepKCF.kcf.kcftracker import KCFTracker
+from got10k.experiments import ExperimentGOT10k, ExperimentOTB
+from got10k.datasets import GOT10k
+from got10k.utils.viz import show_frame
+from got10k.trackers.DeepKCF.kcf.kcftracker import KCFTracker
 
 
 ROOT_DIR = '/home/zhangzichun/OTB2015/'
