@@ -320,7 +320,7 @@ class KCFTracker(Tracker):
 		feat = self.getFeatures(image, init=1)
 		self._prob = self.createGaussianPeak(self._tmpl_sz[1], self._tmpl_sz[0])
 		self._alphaf = [0 for i in xrange(self.numLayers)]
-		self._xf = [np.zeros(self._tmpl_sz[1], self._tmpl_sz[0], 2*self.layer_size[layer])\
+		self._xf = [np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2*self.layer_size[layer]), np.float32)\
 																 for layer in xrange(self.numLayers)] #2layers for cv2.dft
 		self.train(feat, 1.0)
 
