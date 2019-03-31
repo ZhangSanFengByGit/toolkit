@@ -305,6 +305,8 @@ class KCFTracker(Tracker):
 				self._xf[layer][:,:,i+1] = (1-train_interp_factor)*self._xf[layer][:,:,i+1] + \
 														train_interp_factor*imag(zf)
 				
+				cur = cv2.mulSpectrums(zf,zf,0,conjB=True)
+				print(cur.shape)
 				kzf += cv2.mulSpectrums(zf, zf, 0, conjB=True)
 			
 			kzf = kzf / (self._tmpl_sz[0] * self._tmpl_sz[1] * self.layer_size[layer])
