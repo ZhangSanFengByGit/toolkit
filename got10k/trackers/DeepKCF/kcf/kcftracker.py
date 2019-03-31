@@ -39,7 +39,7 @@ def complexDivision(a, b):
 
 def rearrange(img):
 	#return np.fft.fftshift(img, axes=(0,1))
-	assert(img.ndim==2)
+	assert(img.ndim==2), 'input is of shape {}, not 2 channel'.format(img.shape)
 	img_ = np.zeros(img.shape, img.dtype)
 	xh, yh = img.shape[1]/2, img.shape[0]/2
 	img_[0:yh,0:xh], img_[yh:img.shape[0],xh:img.shape[1]] = img[yh:img.shape[0],xh:img.shape[1]], img[0:yh,0:xh]
