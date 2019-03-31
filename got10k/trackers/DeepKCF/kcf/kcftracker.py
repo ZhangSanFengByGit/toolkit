@@ -176,6 +176,7 @@ class KCFTracker(Tracker):
 
 
 	def init_net(self):
+		os.getcwd()
 		assert os.path.isfile(self.pretrain_path), '{} is not a valid file'.format(self.pretrain_path)
 		self.net = load_pretrain(self.net, self.pretrain_path)
 		self.net.eval()
