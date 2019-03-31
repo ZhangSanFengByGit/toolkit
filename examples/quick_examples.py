@@ -10,7 +10,7 @@ from got10k.utils.viz import show_frame
 from got10k.trackers.DeepKCF.kcf.kcftracker import KCFTracker
 
 
-ROOT_DIR = 'data/GOT-10k'
+ROOT_DIR = '/home/zhangzichun/OTB2015/'
 
 
 def example_track_val_set():
@@ -91,4 +91,4 @@ def example_show():
 if __name__ == '__main__':
     # choose an example function to execute, e.g.,
     # > python quick_examples example_loop_dataset
-    fire.Fire()
+    fire.Fire(example_track_val_set)

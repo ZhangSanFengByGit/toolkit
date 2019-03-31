@@ -90,6 +90,42 @@ def subwindow(img, window, borderType=cv2.BORDER_CONSTANT):
 		res = cv2.copyMakeBorder(res, border[1], border[3], border[0], border[2], borderType)
 	return res
 
+## for loading pretrained model
+def check_keys(model, pretrained_state_dict):
+    ckpt_keys = set(pretrained_state_dict.keys())
+    model_keys = set(model.state_dict().keys())
+    used_pretrained_keys = model_keys & ckpt_keys
+    unused_pretrained_keys = ckpt_keys - model_keys
+    missing_keys = model_keys - ckpt_keys
+
+    print('missing keys:{}'.format(len(missing_keys)))
+    print('unused checkpoint keys:{}'.format(len(unused_pretrained_keys)))
+    print('used keys:{}'.format(len(used_pretrained_keys)))
+    assert len(used_pretrained_keys) > 0, 'load NONE from pretrained checkpoint'
+    return True
+
+
+def remove_prefix(state_dict, prefix):
+    ''' Old style model is stored with all names of parameters share common prefix 'module.' '''
+    print('remove prefix \'{}\''.format(prefix))
+    f = lambda x: x.split(prefix, 1)[-1] if x.startswith(prefix) else x
+    return {f(key): value for key, value in state_dict.items()}
+
+
+def load_pretrain(model, pretrained_path):
+    print('load pretrained model from {}'.format(pretrained_path))
+
+    device = torch.cuda.current_device()
+    pretrained_dict = torch.load(pretrained_path, map_location=lambda storage, loc: storage.cuda(device))
+
+    if "state_dict" in pretrained_dict.keys():
+        pretrained_dict = remove_prefix(pretrained_dict['state_dict'], 'module.')
+    else:
+        pretrained_dict = remove_prefix(pretrained_dict, 'module.')
+    check_keys(model, pretrained_dict)
+    model.load_state_dict(pretrained_dict, strict=False)
+    return model
+
 
 
 # KCF tracker
@@ -109,11 +145,15 @@ class KCFTracker(Tracker):
 		self.cell_size = 1   # HOG cell size
 		#deep feature params
 		#self.warp_feature_size = 
-		self.layer_size = [ 64, 256, 512 ]
+
+		#net
 		self.net = SiamFC_Res22()
+		self.pretrain_path = '../pretrain/CIResNet22.pth'
+		self.layer_size = [ 64, 256, 512 ]
 		self.indLayers = [19, 28, 37]     #The CNN layers Conv5-4, Conv4-4, and Conv3-4 in ResNet
 		self.nweights  = [0.25, 0.5, 1]   #Weights for combining correlation filter responses
 		self.numLayers = length(indLayers)
+		init_net()
 
 		# multiscale
 		self.net_insize = 255
@@ -132,6 +172,14 @@ class KCFTracker(Tracker):
 		self._prob = None  # numpy.ndarray    (size_patch[0], size_patch[1], 2)
 		#self._tmpl = None  # numpy.ndarray    raw: (size_patch[0], size_patch[1])   hog: (size_patch[2], size_patch[0]*size_patch[1])
 		#self.hann = None  # numpy.ndarray    raw: (size_patch[0], size_patch[1])   hog: (size_patch[2], size_patch[0]*size_patch[1])
+
+
+	def init_net(self):
+		assert os.path.isfile(self.pretrain_path), '{} is not a valid file'.format(self.pretrain_path)
+		self.net = load_pretrain(self.net, self.pretrain_path)
+		self.net.eval()
+		self.net = self.net.cuda()
+
 
 	def subPixelPeak(self, left, center, right):
 		divisor = 2*center - right - left   #float
@@ -323,7 +371,7 @@ class KCFTracker(Tracker):
 		#pre possess of the img
 		img = np.transpose(img,(2,0,1))
 		img = torch.from_numpy(img).float().unsqueeze(0)
-		
+		img = img.cuda()
 		features = self.net.feature_extractor(img)  #returned numpy format feature
 
 		#post possess of the feature
