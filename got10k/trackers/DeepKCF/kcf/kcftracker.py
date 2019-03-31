@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import torch
 import sys
+import os
 
 import fhog
 from ..net.models import SiamFC_Incep22, SiamFC_Res22
