@@ -257,7 +257,7 @@ class KCFTracker(Tracker):
 
 		z = subwindow(image, extracted_roi, cv2.BORDER_REPLICATE)
 		if(z.shape[1]!=self.net_insize or z.shape[0]!=self.net_insize):
-			z = cv2.resize(z, tuple(self.net_insize))
+			z = cv2.resize(z, (self.net_insize, self.net_insize))
 
 		FeaturesMap = get_deep_feature(z)
 		#if(inithann):
