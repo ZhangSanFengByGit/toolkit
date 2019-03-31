@@ -314,7 +314,7 @@ class KCFTracker(Tracker):
 
 
 	def init(self, roi, image):
-		self._roi = map(float, roi)
+		self._roi = roi.astype(np.float32)
 		assert(roi[2]>0 and roi[3]>0)
 		feat = self.getFeatures(image, init=1)
 		self._prob = self.createGaussianPeak(self._tmpl_sz[0], self._tmpl_sz[1])
