@@ -4,7 +4,7 @@ import fire
 from PIL import Image
 
 #rom ..got10k.trackers import Tracker, IdentityTracker
-from got10k.experiments.otb import ExperimentGOT10k, ExperimentOTB
+from got10k.experiments.otb import ExperimentOTB
 from got10k.datasets.got10k import GOT10k
 from got10k.utils.viz import show_frame
 from got10k.trackers.DeepKCF.kcf.kcftracker import KCFTracker
