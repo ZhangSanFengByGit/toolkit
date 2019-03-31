@@ -2,9 +2,9 @@ from __future__ import absolute_import, print_function
 
 import fire
 from PIL import Image
-import os
+import sys
 
-os.path.append('..')
+sys.path.append('..')
 #rom ..got10k.trackers import Tracker, IdentityTracker
 from got10k.experiments import ExperimentGOT10k, ExperimentOTB
 from got10k.datasets import GOT10k
