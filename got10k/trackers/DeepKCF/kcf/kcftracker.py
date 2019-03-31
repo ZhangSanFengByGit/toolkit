@@ -100,7 +100,7 @@ def check_keys(model, pretrained_state_dict):
     missing_keys = model_keys - ckpt_keys
 
     print('missing keys:{}'.format(len(missing_keys)))
-    print(missing_keys)
+    #print(missing_keys)
     print('unused checkpoint keys:{}'.format(len(unused_pretrained_keys)))
     print('used keys:{}'.format(len(used_pretrained_keys)))
     assert len(used_pretrained_keys) > 0, 'load NONE from pretrained checkpoint'
@@ -314,8 +314,8 @@ class KCFTracker(Tracker):
 
 
 
-	def init(self, roi, image):
-		self._roi = roi.astype(np.float32)
+	def init(self, image, roi):
+		self._roi = map(float, roi)
 		assert(roi[2]>0 and roi[3]>0)
 		feat = self.getFeatures(image, init=1)
 		self._prob = self.createGaussianPeak(self._tmpl_sz[0], self._tmpl_sz[1])
