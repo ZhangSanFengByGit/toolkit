@@ -6,8 +6,8 @@ import sys
 
 sys.path.append('..')
 #rom ..got10k.trackers import Tracker, IdentityTracker
-from got10k.experiments import ExperimentGOT10k, ExperimentOTB
-from got10k.datasets import GOT10k
+from got10k.experiments.otb import ExperimentGOT10k, ExperimentOTB
+from got10k.datasets.got10k import GOT10k
 from got10k.utils.viz import show_frame
 from got10k.trackers.DeepKCF.kcf.kcftracker import KCFTracker
 
