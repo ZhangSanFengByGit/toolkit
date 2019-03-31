@@ -153,7 +153,7 @@ class KCFTracker(Tracker):
 		self.indLayers = [19, 28, 37]     #The CNN layers Conv5-4, Conv4-4, and Conv3-4 in ResNet
 		self.nweights  = [0.25, 0.5, 1]   #Weights for combining correlation filter responses
 		self.numLayers = len(self.indLayers)
-		init_net()
+		self.init_net()
 
 		# multiscale
 		self.net_insize = 255
