@@ -377,11 +377,11 @@ class KCFTracker(Tracker):
 		features = self.net.feature_extractor(img)  #returned numpy format feature
 
 		#post possess of the feature
-		for feat in features:
-			feat = torch.squeeze(feat, 0)
-			feat = feat.data.cpu().numpy()
-			feat = np.transpose(feat, (1, 2, 0))
-			feat = cv2.resize(feat, (self._tmpl_sz[0], self._tmpl_sz[1]), cv2.INTER_LINEAR)
+		for layer in xrange(self.numLayers):
+			features[layer] = torch.squeeze(features[layer], 0)
+			features[layer] = features[layer].data.cpu().numpy()
+			fefeatures[layer]at = np.transpose(features[layer], (1, 2, 0))
+			features[layer] = cv2.resize(features[layer], (self._tmpl_sz[0], self._tmpl_sz[1]), cv2.INTER_LINEAR)
 		
 		return features
 
