@@ -149,7 +149,7 @@ class KCFTracker(Tracker):
 
 		#net
 		self.net = SiamFC_Res22()
-		self.pretrain_path = '../pretrain/CIResNet22.pth'
+		self.pretrain_path = './got10k/trackers/DeepKCF/pretrain/CIResNet22.pth'
 		self.layer_size = [ 64, 256, 512 ]
 		self.indLayers = [19, 28, 37]     #The CNN layers Conv5-4, Conv4-4, and Conv3-4 in ResNet
 		self.nweights  = [0.25, 0.5, 1]   #Weights for combining correlation filter responses
@@ -176,7 +176,6 @@ class KCFTracker(Tracker):
 
 
 	def init_net(self):
-		print(os.getcwd())
 		assert os.path.isfile(self.pretrain_path), '{} is not a valid file'.format(self.pretrain_path)
 		self.net = load_pretrain(self.net, self.pretrain_path)
 		self.net.eval()
