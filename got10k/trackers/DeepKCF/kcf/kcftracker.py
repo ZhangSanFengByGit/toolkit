@@ -279,7 +279,8 @@ class KCFTracker(Tracker):
 				kzf += cv2.mulSpectrums(fftd(cur_feat[:,:,i]), cur_tmpl, 0, conjB=True)
 
 			kzf = kzf / (self._tmpl_sz[0] * self._tmpl_sz[1] * self.layer_size[layer])
-			cur_res = real(rearrange(fftd(complexMultiplication(self._alphaf[layer], kzf), True)))
+			cur_res = real(fftd(complexMultiplication(self._alphaf[layer], kzf), True))
+			cur_res = rearrange(cur_res)
 			cur_res = cur_res/np.max(cur_res)
 
 			res += cur_res * self.nweights[layer]
