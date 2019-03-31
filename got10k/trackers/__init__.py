@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import numpy as np
 import time
 from PIL import Image
+import cv2
 
 from ..utils.viz import show_frame
 
@@ -26,9 +27,9 @@ class Tracker(object):
         times = np.zeros(frame_num)
 
         for f, img_file in enumerate(img_files):
-            image = Image.open(img_file)
-            if not image.mode == 'RGB':
-                image = image.convert('RGB')
+            image = cv2.imread(img_file) #BGR
+            #if not image.mode == 'RGB':
+            #    image = image.convert('RGB')
 
             start_time = time.time()
             if f == 0:
