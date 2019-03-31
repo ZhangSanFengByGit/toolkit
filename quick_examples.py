@@ -10,7 +10,7 @@ from got10k.utils.viz import show_frame
 from got10k.trackers.DeepKCF.kcf.kcftracker import KCFTracker
 
 
-ROOT_DIR = '/home/zhangzichun/OTB2015/'
+ROOT_DIR = '/home/zhangzichun/datasets/OTB2015/'
 
 
 def example_track_val_set():

@@ -272,15 +272,15 @@ class KCFTracker(Tracker):
 		for layer in xrange(self.numLayers):
 			cur_feat = feat[layer]
 			cur_tmpl = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
-			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
+			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
 
 			for i in xrange(self.layer_size[layer]):
 				cur_tmpl[:,:,0], cur_tmpl[:,:,1] = self._xf[layer][:,:,i], self._xf[layer][:,:,i+1]
 				kzf += cv2.mulSpectrums(fftd(cur_feat[:,:,i]), cur_tmpl, 0, conjB=True)
 
 			kzf = kzf / (self._tmpl_sz[0] * self._tmpl_sz[1] * self.layer_size[layer])
-			cur_res = real(fftd(complexMultiplication(self._alphaf, kzf), True))
-			cur_res = rearrange(cur_res)/np.max(cur_res)
+			cur_res = real(rearrange(fftd(complexMultiplication(self._alphaf, kzf), True)))
+			cur_res = cur_res/np.max(cur_res)
 
 			res += cur_res * self.nweights[layer]
 		
@@ -295,7 +295,7 @@ class KCFTracker(Tracker):
 	def train(self, img, train_interp_factor):
 		for layer in xrange(self.numLayers):
 			cur_img = img[layer]
-			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
+			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
 
 			for i in xrange(self.layer_size[layer]):
 				zf = fftd(cur_img[:,:,i])
@@ -305,8 +305,6 @@ class KCFTracker(Tracker):
 				self._xf[layer][:,:,i+1] = (1-train_interp_factor)*self._xf[layer][:,:,i+1] + \
 														train_interp_factor*imag(zf)
 				
-				cur = cv2.mulSpectrums(zf,zf,0,conjB=True)
-				print(cur.shape)
 				kzf += cv2.mulSpectrums(zf, zf, 0, conjB=True)
 			
 			kzf = kzf / (self._tmpl_sz[0] * self._tmpl_sz[1] * self.layer_size[layer])
