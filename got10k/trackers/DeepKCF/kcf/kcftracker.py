@@ -6,7 +6,7 @@ import sys
 
 import fhog
 from ..net.models import SiamFC_Incep22, SiamFC_Res22
-from ../.. import Tracker
+from ... import Tracker
 
 
 # ffttools
