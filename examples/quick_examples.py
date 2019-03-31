@@ -4,7 +4,7 @@ import fire
 from PIL import Image
 import os
 
-os.path.add('..')
+os.path.append('..')
 #rom ..got10k.trackers import Tracker, IdentityTracker
 from got10k.experiments import ExperimentGOT10k, ExperimentOTB
 from got10k.datasets import GOT10k
