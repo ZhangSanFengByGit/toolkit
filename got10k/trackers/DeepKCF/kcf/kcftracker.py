@@ -188,10 +188,10 @@ class KCFTracker(Tracker):
 		return (0 if abs(divisor)<1e-3 else 0.5*(right-left)/divisor)
 
 	def createHanningMats(self):
-		hann2t, hann1t = np.ogrid[0:self._tmpl_sz[0], 0:self._tmpl_sz[1]]
+		hann2t, hann1t = np.ogrid[0:self._tmpl_sz[1], 0:self._tmpl_sz[0]]
 
-		hann1t = 0.5 * (1 - np.cos(2*np.pi*hann1t/(self._tmpl_sz[1]-1)))
-		hann2t = 0.5 * (1 - np.cos(2*np.pi*hann2t/(self._tmpl_sz[0]-1)))
+		hann1t = 0.5 * (1 - np.cos(2*np.pi*hann1t/(self._tmpl_sz[0]-1)))
+		hann2t = 0.5 * (1 - np.cos(2*np.pi*hann2t/(self._tmpl_sz[1]-1)))
 		hann2d = hann2t * hann1t
 		hann2d = hann2d.astype(np.float32)
 		self.hann = [0 for i in xrange(self.numLayers)]
@@ -268,11 +268,11 @@ class KCFTracker(Tracker):
 		return FeaturesMap
 
 	def detect(self, feat):
-		res = np.zeros((self._tmpl_sz[0], self._tmpl_sz[1]), np.float32)
+		res = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
 		for layer in xrange(self.numLayers):
 			cur_feat = feat[layer]
-			cur_tmpl = np.zeros((self._tmpl_sz[0], self._tmpl_sz[1], 2), np.float32)
-			kzf = np.zeros((self._tmpl_sz[0], self._tmpl_sz[1]), np.float32)
+			cur_tmpl = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
+			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
 
 			for i in xrange(self.layer_size[layer]):
 				cur_tmpl[:,:,0], cur_tmpl[:,:,1] = self._xf[layer][:,:,i], self._xf[layer][:,:,i+1]
@@ -295,7 +295,7 @@ class KCFTracker(Tracker):
 	def train(self, img, train_interp_factor):
 		for layer in xrange(self.numLayers):
 			cur_img = img[layer]
-			kzf = np.zeros((self._tmpl_sz[0], self._tmpl_sz[1]), np.float32)
+			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
 
 			for i in xrange(self.layer_size[layer]):
 				zf = fftd(cur_img[:,:,i])
@@ -318,9 +318,9 @@ class KCFTracker(Tracker):
 		self._roi = map(float, roi)
 		assert(roi[2]>0 and roi[3]>0)
 		feat = self.getFeatures(image, init=1)
-		self._prob = self.createGaussianPeak(self._tmpl_sz[0], self._tmpl_sz[1])
+		self._prob = self.createGaussianPeak(self._tmpl_sz[1], self._tmpl_sz[0])
 		self._alphaf = [0 for i in xrange(self.numLayers)]
-		self._xf = [np.zeros(self._tmpl_sz[0], self._tmpl_sz[1], 2*self.layer_size[layer])\
+		self._xf = [np.zeros(self._tmpl_sz[1], self._tmpl_sz[0], 2*self.layer_size[layer])\
 																 for layer in xrange(self.numLayers)] #2layers for cv2.dft
 		self.train(feat, 1.0)
 
