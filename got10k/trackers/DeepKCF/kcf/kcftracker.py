@@ -276,7 +276,7 @@ class KCFTracker(Tracker):
 			cur_feat = feat[layer]
 			zf = np.fft.fft2(cur_feat)
 			kzf = np.sum((zf * np.conj(self._xf[layer])), axis=0) / np.prod(zf.shape)
-			assert kzf.shape[0] = zf.shape[1]
+			assert kzf.shape[0] == zf.shape[1]
 
 			cur_res = np.real(np.fft.ifft2(self._alphaf[layer]*kzf))
 			cur_res = cur_res/np.max(cur_res)
