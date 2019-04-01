@@ -162,13 +162,12 @@ class KCFTracker(Tracker):
 		self.net_insize = 255
 		self.template_size = 1   # template size
 		self.scale_step = 1.05   # scale step for multi-scale estimation
-		self.scale_weight = 0.96   # to downweight detection scores of other scales for added stability
+		self.scale_weight = 0.98 # to downweight detection scores of other scales for added stability
 
 		#tracking params
 		self.hann = None
 		self._tmpl_sz = [0,0]  # cv::Size, [width,height]  #[int,int]
 		self._roi = [0.,0.,0.,0.]  # cv::Rect2f, [x,y,width,height]  #[float,float,float,float]
-		self.size_patch = [0,0,0]  #[int,int,int]
 		self._scale = 1.   # float
 		self._alphaf = None  # numpy.ndarray    (size_patch[0], size_patch[1], 2)
 		self._xf = None
@@ -197,7 +196,7 @@ class KCFTracker(Tracker):
 		hann2d = hann2d.astype(np.float32)
 		self.hann = [0 for i in xrange(self.numLayers)]
 		for layer in xrange(self.numLayers):
-			self.hann[layer] = np.tile(hann2d, (self.layer_size[layer],1,1)).transpose(1,2,0)
+			self.hann[layer] = np.tile(hann2d, (self.layer_size[layer],1,1))
 
 
 	def createGaussianPeak(self, sizey, sizex):
@@ -207,7 +206,8 @@ class KCFTracker(Tracker):
 		y, x = np.ogrid[0:sizey, 0:sizex]
 		y, x = (y-syh)**2, (x-sxh)**2
 		res = np.exp(mult * (y+x))
-		return fftd(res)
+		assert res.ndim==2
+		return np.fft.fft2(res)
 
 	def getFeatures(self, image, init=0, scale_adjust=1.0):
 		extracted_roi = [0,0,0,0]   #[int,int,int,int]
@@ -268,23 +268,18 @@ class KCFTracker(Tracker):
 			FeaturesMap[layer] = self.hann[layer] * FeaturesMap[layer]
 		return FeaturesMap
 
+
 	def detect(self, feat):
 		res = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
 		start = time.time()
 		for layer in xrange(self.numLayers):
 			cur_feat = feat[layer]
-			cur_tmpl = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
-			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
+			zf = np.fft.fft2(cur_feat)
+			kzf = np.sum((zf * np.conj(self._xf[layer])), axis=0) / np.prod(zf.shape)
+			assert kzf.shape[0] = zf.shape[1]
 
-			for i in xrange(self.layer_size[layer]):
-				cur_tmpl[:,:,0], cur_tmpl[:,:,1] = self._xf[layer][:,:,i], self._xf[layer][:,:,i+1]
-				kzf += cv2.mulSpectrums(fftd(cur_feat[:,:,i]), cur_tmpl, 0, conjB=True)
-
-			kzf = kzf / (self._tmpl_sz[0] * self._tmpl_sz[1] * self.layer_size[layer])
-			cur_res = real(fftd(complexMultiplication(self._alphaf[layer], kzf), True))
-			cur_res = rearrange(cur_res)
+			cur_res = np.real(np.fft.ifft2(self._alphaf[layer]*kzf))
 			cur_res = cur_res/np.max(cur_res)
-
 			res += cur_res * self.nweights[layer]
 		end = time.time()
 		print('detect use time:{}'.format((end-start)))
@@ -294,32 +289,23 @@ class KCFTracker(Tracker):
 
 		p[0] -= res.shape[1] / 2.
 		p[1] -= res.shape[0] / 2.
-
 		return p, pv
 
-	def train(self, img, train_interp_factor):
+
+	def train(self, feature, train_interp_factor):
 		start = time.time()
 		for layer in xrange(self.numLayers):
-			cur_img = img[layer]
-			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
+			cur_feat = feature[layer]
+			xf = np.fft.fft2(cur_feat)
+			self._xf[layer] = (1-train_interp_factor)*self._xf[layer] + train_interp_factor*xf
 
-			for i in xrange(self.layer_size[layer]):
-				zf = fftd(cur_img[:,:,i])
-				#update
-				self._xf[layer][:,:,i] = (1-train_interp_factor)*self._xf[layer][:,:,i] + \
-														train_interp_factor*real(zf)
-				self._xf[layer][:,:,i+1] = (1-train_interp_factor)*self._xf[layer][:,:,i+1] + \
-														train_interp_factor*imag(zf)
-				
-				kzf += cv2.mulSpectrums(zf, zf, 0, conjB=True)
-			
-			kzf = kzf / (self._tmpl_sz[0] * self._tmpl_sz[1] * self.layer_size[layer])
-			alphaf = complexDivision(self._prob, kzf+self.lambdar)
-			#update
+			kf = np.sum(xf * np.conj(xf), axis=0) / np.prod(xf.shape)
+			assert kf.shape[0]==xf.shape[1]
+
+			alphaf = self._prob / (kf+self.lambdar)
 			self._alphaf[layer] = (1-train_interp_factor)*self._alphaf[layer] + train_interp_factor*alphaf
 		end = time.time()
 		print('training tmpl use time:{}'.format((end-start)))
-
 
 
 	def init(self, image, roi):
@@ -328,9 +314,10 @@ class KCFTracker(Tracker):
 		feat = self.getFeatures(image, init=1)
 		self._prob = self.createGaussianPeak(self._tmpl_sz[1], self._tmpl_sz[0])
 		self._alphaf = [0 for i in xrange(self.numLayers)]
-		self._xf = [np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2*self.layer_size[layer]), np.float32)\
+		self._xf = [np.zeros((self.layer_size[layer], self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)\
 																 for layer in xrange(self.numLayers)] #2layers for cv2.dft
 		self.train(feat, 1.0)
+
 
 	def update(self, image):
 		if(self._roi[0]+self._roi[2] <= 0):  self._roi[0] = -self._roi[2] + 1
@@ -390,6 +377,7 @@ class KCFTracker(Tracker):
 			features[layer] = features[layer].data.cpu().numpy()
 			features[layer] = np.transpose(features[layer], (1, 2, 0))
 			features[layer] = cv2.resize(features[layer], (self._tmpl_sz[0], self._tmpl_sz[1]), cv2.INTER_LINEAR)
+			features[layer] = np.transpose(features[layer], (2, 0, 1))
 		
 		return features
 
