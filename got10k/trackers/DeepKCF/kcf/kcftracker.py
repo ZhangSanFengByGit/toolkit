@@ -4,6 +4,7 @@ import cv2
 import torch
 import sys
 import os
+import time
 
 import fhog
 from ..net.models import SiamFC_Incep22, SiamFC_Res22
@@ -269,6 +270,7 @@ class KCFTracker(Tracker):
 
 	def detect(self, feat):
 		res = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
+		start = time.time()
 		for layer in xrange(self.numLayers):
 			cur_feat = feat[layer]
 			cur_tmpl = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
@@ -284,6 +286,8 @@ class KCFTracker(Tracker):
 			cur_res = cur_res/np.max(cur_res)
 
 			res += cur_res * self.nweights[layer]
+		end = time.time()
+		print('detect use time:{}'.format((end-start)))
 		
 		_, pv, _, pi = cv2.minMaxLoc(res)   # pv:float  pi:tuple of int
 		p = [float(pi[0]), float(pi[1])]   # cv::Point2f, [x,y]  #[float,float]
@@ -294,6 +298,7 @@ class KCFTracker(Tracker):
 		return p, pv
 
 	def train(self, img, train_interp_factor):
+		start = time.time()
 		for layer in xrange(self.numLayers):
 			cur_img = img[layer]
 			kzf = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0], 2), np.float32)
@@ -312,6 +317,8 @@ class KCFTracker(Tracker):
 			alphaf = complexDivision(self._prob, kzf+self.lambdar)
 			#update
 			self._alphaf[layer] = (1-train_interp_factor)*self._alphaf[layer] + train_interp_factor*alphaf
+		end = time.time()
+		print('training tmpl use time:{}'.format((end-start)))
 
 
 
