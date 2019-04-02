@@ -145,7 +145,7 @@ class KCFTracker(Tracker):
 		self.interp_factor = 0.012   # linear interpolation factor for adaptation
 		#self.sigma = 0.6  # gaussian kernel bandwidth
 		# TPAMI   #interp_factor = 0.02   #sigma = 0.5
-		self.cell_size = 1   # HOG cell size
+		self.cell_size = 4   # HOG cell size
 		#deep feature params
 		#self.warp_feature_size = 
 
@@ -162,7 +162,7 @@ class KCFTracker(Tracker):
 		self.net_insize = 255
 		self.template_size = 1   # template size
 		self.scale_step = 1.05   # scale step for multi-scale estimation
-		self.scale_weight = 0.98 # to downweight detection scores of other scales for added stability
+		self.scale_weight = 1 # to downweight detection scores of other scales for added stability
 
 		#tracking params
 		self.hann = None
@@ -239,11 +239,11 @@ class KCFTracker(Tracker):
 					self._scale = padded_w / float(self.template_size)
 				else:
 					self._scale = padded_h / float(self.template_size)
-				self._tmpl_sz[0] = int(padded_w / self._scale)
-				self._tmpl_sz[1] = int(padded_h / self._scale)
+				self._tmpl_sz[0] = int(padded_w / self._scale / self.cell_size)
+				self._tmpl_sz[1] = int(padded_h / self._scale / self.cell_size)
 			else:
-				self._tmpl_sz[0] = int(padded_w)
-				self._tmpl_sz[1] = int(padded_h)
+				self._tmpl_sz[0] = int(padded_w / self.cell_size)
+				self._tmpl_sz[1] = int(padded_h / self.cell_size)
 				self._scale = 1.
 
 			self._tmpl_sz[0] = int(self._tmpl_sz[0]) / 2 * 2
@@ -251,8 +251,8 @@ class KCFTracker(Tracker):
 
 			self.createHanningMats()
 
-		extracted_roi[2] = int(scale_adjust * self._scale * self._tmpl_sz[0])
-		extracted_roi[3] = int(scale_adjust * self._scale * self._tmpl_sz[1])
+		extracted_roi[2] = int(scale_adjust * self._scale * self._tmpl_sz[0] * self.cell_size)
+		extracted_roi[3] = int(scale_adjust * self._scale * self._tmpl_sz[1] * self.cell_size)
 		extracted_roi[0] = int(cx - extracted_roi[2]/2)
 		extracted_roi[1] = int(cy - extracted_roi[3]/2)
 
@@ -349,8 +349,8 @@ class KCFTracker(Tracker):
 				self._roi[2] *= self.scale_step
 				self._roi[3] *= self.scale_step
 		
-		self._roi[0] = cx - self._roi[2]/2.0 + loc[0]*self._scale
-		self._roi[1] = cy - self._roi[3]/2.0 + loc[1]*self._scale
+		self._roi[0] = cx - self._roi[2]/2.0 + loc[0]*self._scale*self.cell_size
+		self._roi[1] = cy - self._roi[3]/2.0 + loc[1]*self._scale*self.cell_size
 		
 		if(self._roi[0] >= image.shape[1]-1):  self._roi[0] = image.shape[1] - 1
 		if(self._roi[1] >= image.shape[0]-1):  self._roi[1] = image.shape[0] - 1
