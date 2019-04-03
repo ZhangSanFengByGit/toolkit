@@ -137,17 +137,15 @@ class KCFTracker(Tracker):
 		super(KCFTracker, self).__init__(name="DeepKCF", is_deterministic = True)
 
 		self.lambdar = 0.0001   # regularization
-		self.padding = 2.5   # extra area surrounding the target
+		self.padding = 3 #2.5   # extra area surrounding the target
 		self.restrict_height = 1.5
-		self.restrict_large = 2
+		self.restrict_large = 2.5 #2
 		self.output_sigma_factor = 0.125   # bandwidth of gaussian target
 
-		self.interp_factor = 0.012   # linear interpolation factor for adaptation
+		self.interp_factor = 0.0075 #0.012   # linear interpolation factor for adaptation
 		#self.sigma = 0.6  # gaussian kernel bandwidth
 		# TPAMI   #interp_factor = 0.02   #sigma = 0.5
 		self.cell_size = 4   # HOG cell size
-		#deep feature params
-		#self.warp_feature_size = 
 
 		#net
 		self.net = SiamFC_Res22()
@@ -161,8 +159,8 @@ class KCFTracker(Tracker):
 		# multiscale
 		self.net_insize = 255
 		self.template_size = 1   # template size
-		self.scale_step = 1.05   # scale step for multi-scale estimation
-		self.scale_weight = 1 # to downweight detection scores of other scales for added stability
+		self.scale_step = [1.01, 1.02, 1.03, 1.04] #1.05   # scale step for multi-scale estimation
+		self.scale_weight = [0.99, 0.98, 0.97, 0.96] #1 # to downweight detection scores of other scales for added stability
 
 		#tracking params
 		self.hann = None
@@ -271,7 +269,6 @@ class KCFTracker(Tracker):
 
 	def detect(self, feat):
 		res = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
-		start = time.time()
 		for layer in xrange(self.numLayers):
 			cur_feat = feat[layer]
 			zf = np.fft.fft2(cur_feat)
@@ -281,10 +278,8 @@ class KCFTracker(Tracker):
 			cur_res = np.real(np.fft.ifft2(self._alphaf[layer]*kzf))
 			cur_res = cur_res/np.max(cur_res)
 			res += cur_res * self.nweights[layer]
-		end = time.time()
-		print('detect use time:{}'.format((end-start)))
 		
-		_, pv, _, pi = cv2.minMaxLoc(res)   # pv:float  pi:tuple of int
+		_, pv, _, pi = cv2.minMaxLoc(res)   # pv:float  pi:tuple of int; WH format
 		p = [float(pi[0]), float(pi[1])]   # cv::Point2f, [x,y]  #[float,float]
 
 		p[0] -= res.shape[1] / 2.
@@ -293,7 +288,6 @@ class KCFTracker(Tracker):
 
 
 	def train(self, feature, train_interp_factor):
-		start = time.time()
 		for layer in xrange(self.numLayers):
 			cur_feat = feature[layer]
 			xf = np.fft.fft2(cur_feat)
@@ -304,8 +298,6 @@ class KCFTracker(Tracker):
 
 			alphaf = self._prob / (kf+self.lambdar)
 			self._alphaf[layer] = (1-train_interp_factor)*self._alphaf[layer] + train_interp_factor*alphaf
-		end = time.time()
-		print('training tmpl use time:{}'.format((end-start)))
 
 
 	def init(self, image, roi):
@@ -329,25 +321,44 @@ class KCFTracker(Tracker):
 		cy = self._roi[1] + self._roi[3]/2.
 
 		loc, peak_value = self.detect(self.getFeatures(image, scale_adjust= 1.0))
+		res_loc, res_peak_value = loc, peak_value
 
-		if(self.scale_step != 1):
+		for i in xrange(len(self.scale_step)):
+			cur_step = self.scale_step[i]
+			
 			# Test at a smaller _scale
-			new_loc1, new_peak_value1 = self.detect(self.getFeatures(image, scale_adjust=1.0/self.scale_step))
+			new_loc1, new_peak_value1 = self.detect(self.getFeatures(image, scale_adjust=1.0/cur_step))
 			# Test at a bigger _scale
-			new_loc2, new_peak_value2 = self.detect(self.getFeatures(image, scale_adjust=self.scale_step))
+			new_loc2, new_peak_value2 = self.detect(self.getFeatures(image, scale_adjust=cur_step))
 
-			if(self.scale_weight*new_peak_value1 > peak_value and new_peak_value1>new_peak_value2):
+			if(new_peak_value1 > new_peak_value2):
+				if(new_peak_value1 * self.scale_weight[i] > res_peak_value):
+					res_peak_value = new_peak_value1 * self.scale_weight[i]
+					res_loc = new_loc1
+					res_step = 1.0/cur_step
+			else:
+				if(new_peak_value2 * self.scale_weight[i] > res_peak_value):
+					res_peak_value = new_peak_value2 * self.scale_weight[i]
+					res_loc = new_loc2
+					res_step = cur_step
+
+			'''if(self.scale_weight[i] * new_peak_value1 > peak_value and new_peak_value1 > new_peak_value2):
 				loc = new_loc1
 				peak_value = new_peak_value1
-				self._scale /= self.scale_step
-				self._roi[2] /= self.scale_step
-				self._roi[3] /= self.scale_step
-			elif(self.scale_weight*new_peak_value2 > peak_value):
+				self._scale /= cur_step
+				self._roi[2] /= cur_step
+				self._roi[3] /= cur_step
+			elif(self.scale_weight[i] * new_peak_value2 > peak_value):
 				loc = new_loc2
 				peak_value = new_peak_value2
-				self._scale *= self.scale_step
-				self._roi[2] *= self.scale_step
-				self._roi[3] *= self.scale_step
+				self._scale *= cur_step
+				self._roi[2] *= cur_step
+				self._roi[3] *= cur_step'''
+
+		loc = res_loc
+		self._scale *= res_step
+		self._roi[2] *= res_step
+		self._roi[3] *= res_step
 		
 		self._roi[0] = cx - self._roi[2]/2.0 + loc[0]*self._scale*self.cell_size
 		self._roi[1] = cy - self._roi[3]/2.0 + loc[1]*self._scale*self.cell_size
@@ -361,7 +372,13 @@ class KCFTracker(Tracker):
 		x = self.getFeatures(image, scale_adjust=1)
 		self.train(x, self.interp_factor)
 
-		return self._roi
+		return_box = [0., 0., 0., 0.]
+		return_box[0] = max(0, min(self._roi[0], image.shape[1]-1))
+		return_box[1] = max(0, min(self._roi[1], image.shape[0]-1))
+		return_box[2] = max(10, min(self._roi[2], image.shape[1]-1))
+		return_box[3] = max(10, min(self._roi[3], image.shape[0]-1))
+
+		return return_box
 
 
 	def get_deep_feature(self,img):

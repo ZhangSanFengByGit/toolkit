@@ -26,6 +26,7 @@ def example_track_val_set():
 
     # report performance
     experiment.report([tracker.name])
+    #experiment.show([tracker.name],play_speed=5)
 
 
 def example_track_test_set():

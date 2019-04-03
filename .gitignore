@@ -10,5 +10,7 @@ profiles/
 venv/
 build/
 dist/
+/reports*
+/results*
 *.egg-info
 !.gitignore
