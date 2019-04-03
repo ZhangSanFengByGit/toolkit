@@ -321,7 +321,7 @@ class KCFTracker(Tracker):
 		cy = self._roi[1] + self._roi[3]/2.
 
 		loc, peak_value = self.detect(self.getFeatures(image, scale_adjust= 1.0))
-		res_loc, res_peak_value = loc, peak_value
+		res_loc, res_peak_value, res_step = loc, peak_value, 1
 
 		for i in xrange(len(self.scale_step)):
 			cur_step = self.scale_step[i]
