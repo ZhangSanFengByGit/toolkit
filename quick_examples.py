@@ -20,8 +20,8 @@ def example_track_val_set():
     # run experiment on validation set
     experiment = ExperimentOTB(
         root_dir=ROOT_DIR,
-        result_dir='results3',
-        report_dir='reports3')
+        result_dir='results2',
+        report_dir='reports2')
     experiment.run(tracker, visualize=False)
 
     # report performance
