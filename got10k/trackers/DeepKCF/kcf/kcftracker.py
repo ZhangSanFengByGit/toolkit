@@ -307,7 +307,7 @@ class KCFTracker(Tracker):
 			self._alphaf[layer] = (1-train_interp_factor)*self._alphaf[layer] + train_interp_factor*alphaf
 
 		end = time.time()
-		print('detection use time : {}'.format(end-start))
+		print('train use time : {}'.format(end-start))
 
 	def init(self, image, roi):
 		self._roi = map(float, roi)
