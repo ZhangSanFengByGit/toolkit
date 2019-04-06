@@ -268,6 +268,7 @@ class KCFTracker(Tracker):
 
 
 	def detect(self, feat):
+		start = time.time()
 		res = np.zeros((self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)
 		for layer in xrange(self.numLayers):
 			cur_feat = feat[layer]
@@ -284,10 +285,16 @@ class KCFTracker(Tracker):
 
 		p[0] -= res.shape[1] / 2.
 		p[1] -= res.shape[0] / 2.
+		
+		end = time.time()
+		print('detection use time : {}'.format(end-start))
+
 		return p, pv
 
 
 	def train(self, feature, train_interp_factor):
+		start = time.time()
+
 		for layer in xrange(self.numLayers):
 			cur_feat = feature[layer]
 			xf = np.fft.fft2(cur_feat)
@@ -299,6 +306,8 @@ class KCFTracker(Tracker):
 			alphaf = self._prob / (kf+self.lambdar)
 			self._alphaf[layer] = (1-train_interp_factor)*self._alphaf[layer] + train_interp_factor*alphaf
 
+		end = time.time()
+		print('detection use time : {}'.format(end-start))
 
 	def init(self, image, roi):
 		self._roi = map(float, roi)
