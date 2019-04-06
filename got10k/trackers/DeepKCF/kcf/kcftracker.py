@@ -159,8 +159,8 @@ class KCFTracker(Tracker):
 		# multiscale
 		self.net_insize = 255
 		self.template_size = 1   # template size
-		self.scale_step = [1.01, 1.02, 1.03, 1.04] #1.05   # scale step for multi-scale estimation
-		self.scale_weight = [0.99, 0.98, 0.97, 0.96] #1 # to downweight detection scores of other scales for added stability
+		self.scale_step = [1.01,]# 1.02, 1.03, 1.04] #1.05   # scale step for multi-scale estimation
+		self.scale_weight = [0.99,]# 0.98, 0.97, 0.96] #1 # to downweight detection scores of other scales for added stability
 
 		#tracking params
 		self.hann = None
