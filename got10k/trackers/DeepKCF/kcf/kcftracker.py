@@ -443,7 +443,7 @@ class KCFTracker(Tracker):
 
 		else:
 			batch_sz = len(img)
-			m_input = torch.empty([batch_sz, 3, net_insize, net_insize])
+			m_input = torch.empty([batch_sz, 3, self.net_insize, self.net_insize])
 			for i in xrange(batch_sz):
 				cur = np.transpose(img[i],(2,0,1))
 				cur = torch.from_numpy(img).float()
