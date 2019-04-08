@@ -446,7 +446,7 @@ class KCFTracker(Tracker):
 			m_input = torch.empty([batch_sz, 3, self.net_insize, self.net_insize])
 			for i in xrange(batch_sz):
 				cur = np.transpose(img[i],(2,0,1))
-				cur = torch.from_numpy(img[i]).float()
+				cur = torch.from_numpy(cur).float()
 				m_input[i] = cur
 			
 			features = self.net.feature_extractor(m_input.cuda())
