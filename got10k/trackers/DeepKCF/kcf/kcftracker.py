@@ -283,8 +283,8 @@ class KCFTracker(Tracker):
 						img1 = cv2.resize(img1, (self.net_insize, self.net_insize))
 					imgs[i] = img1
 				else:
-					extracted_roi[2] = int(1.0/scale_step[i] * self._scale * self._tmpl_sz[0] * self.cell_size)
-					extracted_roi[3] = int(1.0/scale_step[i] * self._scale * self._tmpl_sz[1] * self.cell_size)
+					extracted_roi[2] = int(1.0/scale_step[i-1] * self._scale * self._tmpl_sz[0] * self.cell_size)
+					extracted_roi[3] = int(1.0/scale_step[i-1] * self._scale * self._tmpl_sz[1] * self.cell_size)
 					extracted_roi[0] = int(cx - extracted_roi[2]/2)
 					extracted_roi[1] = int(cy - extracted_roi[3]/2)
 
@@ -293,8 +293,8 @@ class KCFTracker(Tracker):
 						img1 = cv2.resize(img1, (self.net_insize, self.net_insize))
 					imgs[2*i-1] = img1
 
-					extracted_roi[2] = int(scale_step[i] * self._scale * self._tmpl_sz[0] * self.cell_size)
-					extracted_roi[3] = int(scale_step[i] * self._scale * self._tmpl_sz[1] * self.cell_size)
+					extracted_roi[2] = int(scale_step[i-1] * self._scale * self._tmpl_sz[0] * self.cell_size)
+					extracted_roi[3] = int(scale_step[i-1] * self._scale * self._tmpl_sz[1] * self.cell_size)
 					extracted_roi[0] = int(cx - extracted_roi[2]/2)
 					extracted_roi[1] = int(cy - extracted_roi[3]/2)
 
