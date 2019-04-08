@@ -137,12 +137,13 @@ class KCFTracker(Tracker):
 		super(KCFTracker, self).__init__(name="DeepKCF", is_deterministic = True)
 
 		self.lambdar = 0.0001   # regularization
-		self.padding = 3 #2.5   # extra area surrounding the target
+		self.padding = 2.5   # extra area surrounding the target
 		self.restrict_height = 1.5
-		self.restrict_large = 2.5 #2
+		self.restrict_width = 3.0
+		self.restrict_large = 2.0
 		self.output_sigma_factor = 0.125   # bandwidth of gaussian target
 
-		self.interp_factor = 0.0075 #0.012   # linear interpolation factor for adaptation
+		self.interp_factor = 0.01 #0.012   # linear interpolation factor for adaptation
 		#self.sigma = 0.6  # gaussian kernel bandwidth
 		# TPAMI   #interp_factor = 0.02   #sigma = 0.5
 		self.cell_size = 4   # HOG cell size
@@ -159,8 +160,8 @@ class KCFTracker(Tracker):
 		# multiscale
 		self.net_insize = 255
 		self.template_size = 1   # template size
-		self.scale_step = [1.01,]# 1.02, 1.03, 1.04] #1.05   # scale step for multi-scale estimation
-		self.scale_weight = [0.99,]# 0.98, 0.97, 0.96] #1 # to downweight detection scores of other scales for added stability
+		self.scale_step = [1.01, 1.02, 1.03, 1.04] #1.05   # scale step for multi-scale estimation
+		self.scale_weight = [0.999, 0.996, 0.993, 0.990] #1 # to downweight detection scores of other scales for added stability
 
 		#tracking params
 		self.hann = None
@@ -207,15 +208,15 @@ class KCFTracker(Tracker):
 		assert res.ndim==2
 		return np.fft.fft2(res)
 
-	def getFeatures(self, image, init=0, scale_adjust=1.0):
+	def getFeatures(self, image, init=0, scale_adjust=None, scale_step=None):
 		extracted_roi = [0,0,0,0]   #[int,int,int,int]
 		cx = self._roi[0] + self._roi[2]/2  #float
 		cy = self._roi[1] + self._roi[3]/2  #float
 
 		if(init):
-			if(float(self._roi[2])/float(self._roi[3]) > 2. ): #if(target_sz(1)/target_sz(2) > 2)
+			if(float(self._roi[2])/float(self._roi[3]) > 2.5 ): #if(target_sz(1)/target_sz(2) > 2)
 				#For objects with large height, we restrict the search window with padding.height
-				padded_w = self._roi[2] * self.padding
+				padded_w = self._roi[2] * self.restrict_width
 				padded_h = self._roi[3] * self.restrict_height
 				#window_sz = floor(target_sz.*[1+padding.height, 1+padding.generic]);
 				
@@ -249,22 +250,68 @@ class KCFTracker(Tracker):
 
 			self.createHanningMats()
 
-		extracted_roi[2] = int(scale_adjust * self._scale * self._tmpl_sz[0] * self.cell_size)
-		extracted_roi[3] = int(scale_adjust * self._scale * self._tmpl_sz[1] * self.cell_size)
-		extracted_roi[0] = int(cx - extracted_roi[2]/2)
-		extracted_roi[1] = int(cy - extracted_roi[3]/2)
+		if scale_adjust:
+			extracted_roi[2] = int(scale_adjust * self._scale * self._tmpl_sz[0] * self.cell_size)
+			extracted_roi[3] = int(scale_adjust * self._scale * self._tmpl_sz[1] * self.cell_size)
+			extracted_roi[0] = int(cx - extracted_roi[2]/2)
+			extracted_roi[1] = int(cy - extracted_roi[3]/2)
 
-		z = subwindow(image, extracted_roi, cv2.BORDER_REPLICATE)
-		if(z.shape[1]!=self.net_insize or z.shape[0]!=self.net_insize):
-			z = cv2.resize(z, (self.net_insize, self.net_insize))
+			z = subwindow(image, extracted_roi, cv2.BORDER_REPLICATE)
+			if(z.shape[1]!=self.net_insize or z.shape[0]!=self.net_insize):
+				z = cv2.resize(z, (self.net_insize, self.net_insize))
 
-		FeaturesMap = self.get_deep_feature(z)
-		#if(inithann):
-		#	self.createHanningMats()  # createHanningMats need size_patch
-		for layer in xrange(self.numLayers):
-			#hann_window = np.tile(self.hann, (self.layer_size[layer],1,1)).transpose(1,2,0)
-			FeaturesMap[layer] = self.hann[layer] * FeaturesMap[layer]
-		return FeaturesMap
+			FeaturesMap = self.get_deep_feature(z)
+			#if(inithann):
+			#	self.createHanningMats()  # createHanningMats need size_patch
+			for layer in xrange(self.numLayers):
+				#hann_window = np.tile(self.hann, (self.layer_size[layer],1,1)).transpose(1,2,0)
+				FeaturesMap[layer] = self.hann[layer] * FeaturesMap[layer]
+			return FeaturesMap
+		elif scale_step:
+			scale_sz = len(scale_step)
+			times = 2 * scale_sz + 1
+			imgs = [0 for i in xrange(times)]
+			for i in xrange(scale_sz+1):
+				if i==0:
+					extracted_roi[2] = int(1. * self._scale * self._tmpl_sz[0] * self.cell_size)
+					extracted_roi[3] = int(1. * self._scale * self._tmpl_sz[1] * self.cell_size)
+					extracted_roi[0] = int(cx - extracted_roi[2]/2)
+					extracted_roi[1] = int(cy - extracted_roi[3]/2)
+
+					img1 = subwindow(image, extracted_roi, cv2.BORDER_REPLICATE)
+					if(img1.shape[1]!=self.net_insize or img1.shape[0]!=self.net_insize):
+						img1 = cv2.resize(img1, (self.net_insize, self.net_insize))
+					imgs[i] = img1
+				else:
+					extracted_roi[2] = int(1.0/scale_step[i] * self._scale * self._tmpl_sz[0] * self.cell_size)
+					extracted_roi[3] = int(1.0/scale_step[i] * self._scale * self._tmpl_sz[1] * self.cell_size)
+					extracted_roi[0] = int(cx - extracted_roi[2]/2)
+					extracted_roi[1] = int(cy - extracted_roi[3]/2)
+
+					img1 = subwindow(image, extracted_roi, cv2.BORDER_REPLICATE)
+					if(img1.shape[1]!=self.net_insize or img1.shape[0]!=self.net_insize):
+						img1 = cv2.resize(img1, (self.net_insize, self.net_insize))
+					imgs[2*i-1] = img1
+
+					extracted_roi[2] = int(scale_step[i] * self._scale * self._tmpl_sz[0] * self.cell_size)
+					extracted_roi[3] = int(scale_step[i] * self._scale * self._tmpl_sz[1] * self.cell_size)
+					extracted_roi[0] = int(cx - extracted_roi[2]/2)
+					extracted_roi[1] = int(cy - extracted_roi[3]/2)
+
+					img2 = subwindow(image, extracted_roi, cv2.BORDER_REPLICATE)
+					if(img2.shape[1]!=self.net_insize or img2.shape[0]!=self.net_insize):
+						img2 = cv2.resize(img2, (self.net_insize, self.net_insize))
+					imgs[2*i] = img2
+			
+			FeaturesMaps = self.get_deep_feature(imgs, batch=True)
+
+			for idx in xrange(times):
+				for layer in xrange(self.numLayers):
+					FeaturesMaps[idx][layer] = self.hann[layer] * FeaturesMaps[idx][layer]
+			return FeaturesMaps
+		
+		else:
+			raise RuntimeError("No single scale or multi scale detected.")
 
 
 	def detect(self, feat):
@@ -312,7 +359,7 @@ class KCFTracker(Tracker):
 	def init(self, image, roi):
 		self._roi = map(float, roi)
 		assert(roi[2]>0 and roi[3]>0)
-		feat = self.getFeatures(image, init=1)
+		feat = self.getFeatures(image, init=1, scale_adjust=1.0)
 		self._prob = self.createGaussianPeak(self._tmpl_sz[1], self._tmpl_sz[0])
 		self._alphaf = [0 for i in xrange(self.numLayers)]
 		self._xf = [np.zeros((self.layer_size[layer], self._tmpl_sz[1], self._tmpl_sz[0]), np.float32)\
@@ -329,16 +376,16 @@ class KCFTracker(Tracker):
 		cx = self._roi[0] + self._roi[2]/2.
 		cy = self._roi[1] + self._roi[3]/2.
 
-		loc, peak_value = self.detect(self.getFeatures(image, scale_adjust= 1.0))
+		FeatureMaps = self.getFeatures(image, scale_step = self.scale_step)
+		loc, peak_value = self.detect(FeatureMaps[0])
 		res_loc, res_peak_value, res_step = loc, peak_value, 1
 
 		for i in xrange(len(self.scale_step)):
 			cur_step = self.scale_step[i]
-			
 			# Test at a smaller _scale
-			new_loc1, new_peak_value1 = self.detect(self.getFeatures(image, scale_adjust=1.0/cur_step))
+			new_loc1, new_peak_value1 = self.detect(FeatureMaps[2*i+1])
 			# Test at a bigger _scale
-			new_loc2, new_peak_value2 = self.detect(self.getFeatures(image, scale_adjust=cur_step))
+			new_loc2, new_peak_value2 = self.detect(FeatureMaps[2*i+2])
 
 			if(new_peak_value1 > new_peak_value2):
 				if(new_peak_value1 * self.scale_weight[i] > res_peak_value):
@@ -350,19 +397,6 @@ class KCFTracker(Tracker):
 					res_peak_value = new_peak_value2 * self.scale_weight[i]
 					res_loc = new_loc2
 					res_step = cur_step
-
-			'''if(self.scale_weight[i] * new_peak_value1 > peak_value and new_peak_value1 > new_peak_value2):
-				loc = new_loc1
-				peak_value = new_peak_value1
-				self._scale /= cur_step
-				self._roi[2] /= cur_step
-				self._roi[3] /= cur_step
-			elif(self.scale_weight[i] * new_peak_value2 > peak_value):
-				loc = new_loc2
-				peak_value = new_peak_value2
-				self._scale *= cur_step
-				self._roi[2] *= cur_step
-				self._roi[3] *= cur_step'''
 
 		loc = res_loc
 		self._scale *= res_step
@@ -378,7 +412,7 @@ class KCFTracker(Tracker):
 		if(self._roi[1]+self._roi[3] <= 0):  self._roi[1] = -self._roi[3] + 2
 		assert(self._roi[2]>0 and self._roi[3]>0)
 
-		x = self.getFeatures(image, scale_adjust=1)
+		x = self.getFeatures(image, scale_adjust=1.0)
 		self.train(x, self.interp_factor)
 
 		return_box = [0., 0., 0., 0.]
@@ -390,22 +424,45 @@ class KCFTracker(Tracker):
 		return return_box
 
 
-	def get_deep_feature(self,img):
+	def get_deep_feature(self, img, batch=False):
 		#pre possess of the img
-		img = np.transpose(img,(2,0,1))
-		img = torch.from_numpy(img).float().unsqueeze(0)
-		img = img.cuda()
-		features = self.net.feature_extractor(img)  #returned numpy format feature
+		if batch==False:
+			img = np.transpose(img,(2,0,1))
+			img = torch.from_numpy(img).float().unsqueeze(0)
+			img = img.cuda()
+			features = self.net.feature_extractor(img)  #returned numpy format feature
 
-		#post possess of the feature
-		for layer in xrange(self.numLayers):
-			features[layer] = torch.squeeze(features[layer], 0)
-			features[layer] = features[layer].data.cpu().numpy()
-			features[layer] = np.transpose(features[layer], (1, 2, 0))
-			features[layer] = cv2.resize(features[layer], (self._tmpl_sz[0], self._tmpl_sz[1]), cv2.INTER_LINEAR)
-			features[layer] = np.transpose(features[layer], (2, 0, 1))
-		
-		return features
+			#post possess of the feature
+			for layer in xrange(self.numLayers):
+				features[layer] = torch.squeeze(features[layer], 0)
+				features[layer] = features[layer].data.cpu().numpy()
+				features[layer] = np.transpose(features[layer], (1, 2, 0))
+				features[layer] = cv2.resize(features[layer], (self._tmpl_sz[0], self._tmpl_sz[1]), cv2.INTER_LINEAR)
+				features[layer] = np.transpose(features[layer], (2, 0, 1))
+			return features
+
+		else:
+			batch_sz = len(img)
+			m_input = torch.empty([batch_sz, 3, net_insize, net_insize])
+			for i in xrange(batch_sz):
+				cur = np.transpose(img[i],(2,0,1))
+				cur = torch.from_numpy(img).float()
+				m_input[i] = cur
+			
+			features = self.net.feature_extractor(m_input.cuda())
+			features = features.data.cpu().numpy()
+
+			m_return = [[0 for j in range(self.numLayers)] for i in xrange(batch_sz)]
+			for layer in xrange(self.numLayers):
+				for i in xrange(batch_sz):
+					cur = features[layer][i]
+					cur = np.transpose(cur, (1, 2, 0))
+					cur = cv2.resize(cur, (self._tmpl_sz[0], self._tmpl_sz[1]), cv2.INTER_LINEAR)
+					cur = np.transpose(cur, (2, 0, 1))
+					m_return[i][layer] = cur
+			
+			return m_return
+
 
 
 
