@@ -450,7 +450,8 @@ class KCFTracker(Tracker):
 				m_input[i] = cur
 			
 			features = self.net.feature_extractor(m_input.cuda())
-			features = features.data.cpu().numpy()
+			for layer in xrange(self.numLayers):
+				features[layer] = features[layer].data.cpu().numpy()
 
 			m_return = [[0 for j in range(self.numLayers)] for i in xrange(batch_sz)]
 			for layer in xrange(self.numLayers):
